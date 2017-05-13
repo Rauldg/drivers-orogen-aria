@@ -1,8 +1,11 @@
 
 #include "Task.hpp"
-#include<base/logging.h>
+#include<base-logging/Logging.hpp>
 #include<boost/tokenizer.hpp>
 #include<odometry/BodyState.hpp>
+//#include <base/JointState.hpp>
+#include <base/samples/Joints.hpp>
+
 
 using namespace aria;
 
@@ -16,7 +19,7 @@ Task::Task(std::string const& name) //needs_configuration
     : TaskBase(name)
     , MRarguments(0)
     , MRparser(0)
-    , wheel_pos({0,0})
+    , wheel_pos{0,0}
 {
 }
 
@@ -24,7 +27,7 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine) //needs_config
     : TaskBase(name, engine)
     , MRarguments(0)
     , MRparser(0)
-    , wheel_pos({0,0})
+    , wheel_pos{0,0}
 {
 }
 
@@ -176,7 +179,7 @@ void Task::updateHook()
     // Process Motion Commands
     // commands::Motion2D
     bool export_mcmd = false;
-    base::samples::Motion2D command_in;
+    base::commands::Motion2D command_in;
     if (_transrot_vel.read(MRmotion) == RTT::NewData){
         //LOG_DEBUG("Aria: TranslVel %.3f m/s, RotVel %.3f rad/s", MRmotion.translation, MRmotion.rotation);
 
@@ -220,7 +223,7 @@ void Task::updateHook()
     }
 
     if(export_mcmd) {
-        command_in.time = base::Time::now();
+        //command_in.time = base::Time::now();
         _robot_command_in.write(command_in);
     }
     
@@ -228,7 +231,8 @@ void Task::updateHook()
     // Read Sensor Data from Robot
     base::samples::RigidBodyState MRpose;
     base::samples::RigidBodyState MRposeraw;
-    base::actuators::Status MRmotorstatus;
+    //base::actuators::Status MRmotorstatus;
+    base::samples::Joints MRmotorstatus;
     // Resize Motor States to number of wheels
     MRmotorstatus.resize(nwheels);
     
@@ -297,7 +301,8 @@ void Task::updateHook()
     
     // Motor State
     MRmotorstatus.time = t_now;
-    MRmotorstatus.index = index;
+    // TODO: Now the joints don't have index but name... Look how is done or ask
+    //MRmotorstatus.index = index;
 
     // Status
     RobotStatus robot_status;
@@ -326,14 +331,24 @@ void Task::updateHook()
     wheel_pos[0] += MRrobot->getLeftVel() * diffconvfactor * dt.toSeconds();
     wheel_pos[1] += MRrobot->getRightVel() * diffconvfactor * dt.toSeconds();
     
-    MRmotorstatus.states[odometry::FRONT_LEFT].position = wheel_pos[0]; // front left
-    MRmotorstatus.states[odometry::REAR_LEFT].position = wheel_pos[0]; // rear left
-    MRmotorstatus.states[odometry::FRONT_RIGHT].position = wheel_pos[1]; // front right
-    MRmotorstatus.states[odometry::REAR_RIGHT].position = wheel_pos[1]; // rear right
-    MRmotorstatus.states[odometry::FRONT_LEFT].positionExtern = wheel_pos[0]; // front left
-    MRmotorstatus.states[odometry::REAR_LEFT].positionExtern = wheel_pos[0]; // rear left
-    MRmotorstatus.states[odometry::FRONT_RIGHT].positionExtern = wheel_pos[1]; // front right
-    MRmotorstatus.states[odometry::REAR_RIGHT].positionExtern = wheel_pos[1]; // rear right
+    // TODO now we have vector of joints directly and not through states
+    //MRmotorstatus.states[odometry::FRONT_LEFT].position = wheel_pos[0]; // front left
+    //MRmotorstatus.states[odometry::REAR_LEFT].position = wheel_pos[0]; // rear left
+    //MRmotorstatus.states[odometry::FRONT_RIGHT].position = wheel_pos[1]; // front right
+    //MRmotorstatus.states[odometry::REAR_RIGHT].position = wheel_pos[1]; // rear right
+    //MRmotorstatus.states[odometry::FRONT_LEFT].positionExtern = wheel_pos[0]; // front left
+    //MRmotorstatus.states[odometry::REAR_LEFT].positionExtern = wheel_pos[0]; // rear left
+    //MRmotorstatus.states[odometry::FRONT_RIGHT].positionExtern = wheel_pos[1]; // front right
+    //MRmotorstatus.states[odometry::REAR_RIGHT].positionExtern = wheel_pos[1]; // rear right
+    MRmotorstatus[odometry::FRONT_LEFT].position = wheel_pos[0]; // front left
+    MRmotorstatus[odometry::REAR_LEFT].position = wheel_pos[0]; // rear left
+    MRmotorstatus[odometry::FRONT_RIGHT].position = wheel_pos[1]; // front right
+    MRmotorstatus[odometry::REAR_RIGHT].position = wheel_pos[1]; // rear right
+    // TODO Check: now positionExtern does not exists...
+    //MRmotorstatus[odometry::FRONT_LEFT].positionExtern = wheel_pos[0]; // front left
+    //MRmotorstatus[odometry::REAR_LEFT].positionExtern = wheel_pos[0]; // rear left
+    //MRmotorstatus[odometry::FRONT_RIGHT].positionExtern = wheel_pos[1]; // front right
+    //MRmotorstatus[odometry::REAR_RIGHT].positionExtern = wheel_pos[1]; // rear right
     
     
     // Raw Data from left and right Encoders
@@ -361,18 +376,19 @@ void Task::updateHook()
     MRrobot->unlock();
     
     // Write Bumper States per Bumper into Vector
-    bool frbump[MRbumpers.nrFront];
-    bool rebump[MRbumpers.nrRear];
+    // TODO Check that bumpers work
+    //bool frbump[MRbumpers.nrFront];
+    //bool rebump[MRbumpers.nrRear];
     int bit = 0;
     unsigned int i = 0;
     
     for(i = 0, bit = 2; i < MRrobot->getNumFrontBumpers(); i++, bit *= 2){
-    	frbump[i] = (MRbumpers.front & bit);
+    	//frbump[i] = (MRbumpers.front & bit);
     	MRbumpers.bumpersFront.push_back( (maskFront & bit) );
     }
     
     for (i = 0, bit = 2; i < MRrobot->getNumRearBumpers(); i++, bit *= 2){
-    	rebump[i] = (MRbumpers.rear & bit);
+    	//rebump[i] = (MRbumpers.rear & bit);
     	MRbumpers.bumpersRear.push_back( (maskRear & bit) );
     }
     
